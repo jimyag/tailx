@@ -1,0 +1,45 @@
+project_name: tailx
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: tailx
+    main: .
+    binary: tailx
+    env:
+      - CGO_ENABLED=0
+    ldflags:
+      - -s -w
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+
+archives:
+  - id: default
+    builds:
+      - tailx
+    format: tar.gz
+    name_template: "{{ .Binary }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  use: git
+  filters:
+    exclude:
+      - "^docs:"
+      - "^chore:"
+
+release:
+  github:
+    owner: jimyag
+    name: tailx
+  draft: false
+  prerelease: false

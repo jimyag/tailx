@@ -1,0 +1,82 @@
+version: "3"
+
+vars:
+  GOOS:
+    sh: go env GOOS
+  GOARCH:
+    sh: go env GOARCH
+  LDFLAGS: "-s -w"
+
+tasks:
+  default:
+    desc: List all tasks
+    cmds:
+      - task --list-all
+    silent: true
+
+  go-mod-tidy:
+    desc: go mod tidy
+    internal: true
+    run: once
+    cmds:
+      - go mod tidy
+
+  build:
+    desc: Build tailx for current platform
+    deps:
+      - go-mod-tidy
+    cmds:
+      - mkdir -p ./bin/{{.GOOS}}_{{.GOARCH}}
+      - |
+        CGO_ENABLED=0 GOOS={{.GOOS}} GOARCH={{.GOARCH}} \
+        go build -trimpath -ldflags "{{.LDFLAGS}}" \
+        -o ./bin/{{.GOOS}}_{{.GOARCH}}/tailx .
+      - |
+        if [ "{{.GOOS}}" = "{{OS}}" ] && [ "{{.GOARCH}}" = "{{ARCH}}" ]; then
+          cp ./bin/{{.GOOS}}_{{.GOARCH}}/tailx ./bin/tailx
+        fi
+
+  build-os-arch:
+    desc: Build tailx for specified GOOS/GOARCH
+    cmds:
+      - mkdir -p ./bin/{{.GO_OS}}_{{.GO_ARCH}}
+      - |
+        CGO_ENABLED=0 GOOS={{.GO_OS}} GOARCH={{.GO_ARCH}} \
+        go build -trimpath -ldflags "{{.LDFLAGS}}" \
+        -o ./bin/{{.GO_OS}}_{{.GO_ARCH}}/tailx .
+      - |
+        if [ "{{.GO_OS}}" = "{{OS}}" ] && [ "{{.GO_ARCH}}" = "{{ARCH}}" ]; then
+          cp ./bin/{{.GO_OS}}_{{.GO_ARCH}}/tailx ./bin/tailx
+        fi
+
+  build-all:
+    desc: Build tailx for linux/darwin amd64/arm64
+    run: once
+    cmds:
+      - task: build-os-arch
+        vars: { GO_OS: "linux", GO_ARCH: "amd64" }
+      - task: build-os-arch
+        vars: { GO_OS: "linux", GO_ARCH: "arm64" }
+      - task: build-os-arch
+        vars: { GO_OS: "darwin", GO_ARCH: "amd64" }
+      - task: build-os-arch
+        vars: { GO_OS: "darwin", GO_ARCH: "arm64" }
+
+  package:
+    desc: Package build artifacts into dist/*.tar.gz and checksums
+    deps:
+      - build-all
+    cmds:
+      - rm -rf dist && mkdir -p dist
+      - |
+        for dir in bin/*_*; do \
+          name=$(basename "$dir"); \
+          tar -czf "dist/${name}.tar.gz" -C bin "$name"; \
+        done
+      - |
+        (cd dist && shasum -a 256 *.tar.gz > checksums.txt)
+
+  release-local:
+    desc: Run goreleaser without publishing (local dry run)
+    cmds:
+      - goreleaser release --clean --skip=publish

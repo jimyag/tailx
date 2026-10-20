@@ -1,6 +1,8 @@
 module github.com/jimyag/tailx
 
-go 1.25
+go 1.27
+
+toolchain go1.27.3
 
 require (
 	github.com/fatih/color v1.16.0

@@ -6,7 +6,7 @@ toolchain go1.27.3
 
 require (
 	github.com/fatih/color v1.19.0
-	github.com/fsnotify/fsnotify v1.9.0
+	github.com/fsnotify/fsnotify v1.10.1
 )
 
 require (
